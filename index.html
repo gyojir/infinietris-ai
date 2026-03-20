@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>∞etris</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="page-shell">
+    <header class="panel page-header">
+  <h1>∞etris</h1>
+    </header>
+
+    <section class="panel game-panel">
+      <div class="play-layout">
+        <aside class="preview-column left-column">
+          <span class="label preview-label">HOLD</span>
+          <div class="next-frame">
+            <canvas id="hold" width="80" height="80"></canvas>
+          </div>
+        </aside>
+
+        <div class="game-shell">
+          <div class="board-frame">
+            <canvas id="game" width="300" height="600" aria-label="テトリスのゲーム画面"></canvas>
+          </div>
+        </div>
+
+        <aside class="preview-column right-column">
+          <span class="label preview-label">NEXT</span>
+          <div class="next-frame">
+            <canvas id="next" width="80" height="80"></canvas>
+          </div>
+          <div class="stat compact-stat">
+            <span class="label">Pieces</span>
+            <strong id="pieces">0</strong>
+          </div>
+          <div class="stat compact-stat">
+            <span class="label">Lines</span>
+            <strong id="lines">0</strong>
+          </div>
+          <div class="stat compact-stat">
+            <span class="label">Speed</span>
+            <strong id="speed">1.00x</strong>
+          </div>
+          <div class="controls">
+            <h2>Controls</h2>
+            <ul>
+              <li>← → : Move</li>
+              <li>↑ / X : Rotate</li>
+              <li>Z : Rotate Back</li>
+              <li>↓ : Soft Drop</li>
+              <li>Space : Hard Drop</li>
+              <li>C : Hold</li>
+              <li>P : Pause</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay hidden">
+    <div class="overlay-card">
+      <h2 id="overlay-title">Game Over</h2>
+      <p id="overlay-message">画面を再読み込みして再開</p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
