@@ -70,6 +70,10 @@ const overlay = document.getElementById("overlay");
 const overlayTitle = document.getElementById("overlay-title");
 const overlayMessage = document.getElementById("overlay-message");
 
+holdCanvas.tabIndex = 0;
+holdCanvas.setAttribute("role", "button");
+holdCanvas.setAttribute("aria-label", "HOLD");
+
 ctx.scale(BLOCK, BLOCK);
 
 function createBoard() {
@@ -106,6 +110,13 @@ const state = {
   paused: false,
   gameOver: false,
   holdLocked: false,
+  activeTouchId: null,
+  touchStartX: 0,
+  touchStartY: 0,
+  touchLastX: 0,
+  touchLastY: 0,
+  touchStartPieceX: 0,
+  touchMoved: false,
   player: null,
   hold: null,
   next: null,
@@ -601,6 +612,217 @@ window.addEventListener("keydown", (event) => {
     default:
       break;
   }
+});
+
+function handleTouchStart(clientX, clientY, touchId = null) {
+  state.activeTouchId = touchId;
+  state.touchStartX = clientX;
+  state.touchStartY = clientY;
+  state.touchLastX = clientX;
+  state.touchLastY = clientY;
+  state.touchStartPieceX = state.player ? state.player.pos.x : 0;
+  state.touchMoved = false;
+}
+
+function handleTouchMove(clientX, clientY, touchId = null) {
+  if (state.activeTouchId !== null && touchId !== null && state.activeTouchId !== touchId) {
+    return;
+  }
+
+  if (!state.player || state.gameOver || state.paused) {
+    return;
+  }
+
+  const dx = clientX - state.touchStartX;
+  const dy = clientY - state.touchStartY;
+  const dragThreshold = 10;
+  const horizontalStep = BLOCK;
+
+  state.touchLastX = clientX;
+  state.touchLastY = clientY;
+
+  if (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold) {
+    state.touchMoved = true;
+  }
+
+  if (Math.abs(dx) <= dragThreshold || Math.abs(dx) <= Math.abs(dy)) {
+    return;
+  }
+
+  const targetOffset = Math.trunc(dx / horizontalStep);
+  const targetX = state.touchStartPieceX + targetOffset;
+
+  while (state.player.pos.x < targetX) {
+    const previousX = state.player.pos.x;
+    playerMove(1);
+    if (state.player.pos.x === previousX) {
+      break;
+    }
+  }
+
+  while (state.player.pos.x > targetX) {
+    const previousX = state.player.pos.x;
+    playerMove(-1);
+    if (state.player.pos.x === previousX) {
+      break;
+    }
+  }
+}
+
+function handleTouchEnd(clientX, clientY, touchId = null) {
+  if (state.activeTouchId !== null && touchId !== null && state.activeTouchId !== touchId) {
+    return;
+  }
+
+  const dx = clientX - state.touchStartX;
+  const dy = clientY - state.touchStartY;
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+  const swipeThreshold = 24;
+
+  state.activeTouchId = null;
+
+  if (absX < swipeThreshold && absY < swipeThreshold) {
+    playerRotate(1);
+    return;
+  }
+
+  if (dy > swipeThreshold && absY > absX) {
+    hardDrop();
+  }
+}
+
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.pointerType !== "touch") {
+    return;
+  }
+
+  event.preventDefault();
+  canvas.setPointerCapture(event.pointerId);
+  handleTouchStart(event.clientX, event.clientY, event.pointerId);
+});
+
+canvas.addEventListener("pointerup", (event) => {
+  if (event.pointerType !== "touch") {
+    return;
+  }
+
+  event.preventDefault();
+  handleTouchEnd(event.clientX, event.clientY, event.pointerId);
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (event.pointerType !== "touch") {
+    return;
+  }
+
+  event.preventDefault();
+  handleTouchMove(event.clientX, event.clientY, event.pointerId);
+});
+
+canvas.addEventListener("pointercancel", (event) => {
+  if (event.pointerType !== "touch") {
+    return;
+  }
+
+  event.preventDefault();
+  state.activeTouchId = null;
+});
+
+canvas.addEventListener(
+  "touchstart",
+  (event) => {
+    event.preventDefault();
+
+    const touch = event.changedTouches[0];
+    if (!touch) {
+      return;
+    }
+
+    handleTouchStart(touch.clientX, touch.clientY, touch.identifier);
+  },
+  { passive: false }
+);
+
+canvas.addEventListener(
+  "touchend",
+  (event) => {
+    event.preventDefault();
+
+    const touch = event.changedTouches[0];
+    if (!touch) {
+      return;
+    }
+
+    handleTouchEnd(touch.clientX, touch.clientY, touch.identifier);
+  },
+  { passive: false }
+);
+
+canvas.addEventListener(
+  "touchmove",
+  (event) => {
+    event.preventDefault();
+
+    const touch = event.changedTouches[0];
+    if (!touch) {
+      return;
+    }
+
+    handleTouchMove(touch.clientX, touch.clientY, touch.identifier);
+  },
+  { passive: false }
+);
+
+canvas.addEventListener(
+  "touchcancel",
+  (event) => {
+    event.preventDefault();
+    state.activeTouchId = null;
+  },
+  { passive: false }
+);
+
+function triggerHoldInput(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  holdPiece();
+}
+
+holdCanvas.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+});
+
+holdCanvas.addEventListener("pointerup", (event) => {
+  if (event.pointerType === "mouse" && event.button !== 0) {
+    return;
+  }
+
+  if (event.pointerType === "touch" || event.pointerType === "pen") {
+    return;
+  }
+
+  triggerHoldInput(event);
+});
+
+holdCanvas.addEventListener(
+  "touchend",
+  (event) => {
+    triggerHoldInput(event);
+  },
+  { passive: false }
+);
+
+holdCanvas.addEventListener("click", (event) => {
+  triggerHoldInput(event);
+});
+
+holdCanvas.addEventListener("keydown", (event) => {
+  if (event.code !== "Enter" && event.code !== "Space") {
+    return;
+  }
+
+  triggerHoldInput(event);
 });
 
 resetGame();
